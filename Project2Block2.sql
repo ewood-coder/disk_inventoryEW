@@ -5,6 +5,8 @@
 * 10/14/2021	Emma				- Added insert statements to populate db.
 * 10/20/2021	Emma				- Added query to find missing/On Loan disks (h. on PROJECT 3 rubric).
 * 10/21/2021	Emma				- Created T-SQL queries for your disk_inventory database.
+* 10/22/2021	Emma				- Finished making T-SQL queries for disk_inventory database.
+*										-- Also added code to fix fname & lname issues with artists.
 ******************************************************************************************************/
 
 --drop & create database
@@ -67,7 +69,7 @@ CREATE TABLE artist_type
 CREATE TABLE artist
 (artist_id					INT         NOT NULL PRIMARY KEY IDENTITY (1, 1),
  artist_type_id				INT         NOT NULL REFERENCES artist_type (artist_type_id),
- artist_name				CHAR(60)	NOT NULL);
+ artist_name				NVARCHAR(60)	NOT NULL);
 -------------------------------------------------------------------------------------------------
 CREATE TABLE disk_has_artist
 (disk_has_artist_id			INT         NOT NULL PRIMARY KEY IDENTITY (1, 1),
@@ -214,7 +216,7 @@ WHERE borrower_id = 21;
 INSERT INTO Artist
 	(artist_name, artist_type_id)
 VALUES
-	('Van Halen', 1),
+	('Van Halen', 2),
 	('Aerosmith', 2),
 	('Kansas', 2),
 	('Eric Church', 1),
@@ -336,17 +338,23 @@ VALUES
 /*	PROJECT 4	10/22/2021	*/
 
 -- 3. Show the disks in your database and any associated Individual artists only
-SELECT cd_name, release_date, artist_name
+
+SELECT 
+	cd_name as 'Disk Name', 
+	CONVERT(varchar, release_date, 110) as 'Release Date', 
+	-- Artist Names:
+	IIF(CHARINDEX(' ', artist_name) > 0, LEFT(artist_name, CHARINDEX(' ', artist_name)), artist_name) as First_Name, 
+	IIF(CHARINDEX(' ', artist_name) > 0, RIGHT(artist_name, LEN(artist_name) - CHARINDEX(' ', artist_name)), '') as Last_Name
 FROM disk
 	JOIN disk_has_artist ON disk.cd_id = disk_has_artist.cd_id
 	JOIN artist ON artist.artist_id = disk_has_artist.artist_id
 WHERE artist_type_id = 1;
 go
--- SELECT * FROM artist
 
 
 
 -- 4. Create a view called View_Individual_Artist that shows the artists’ names and not group names. Include the artist id in the view definition but do not display the id in your output.
+
 DROP VIEW IF EXISTS View_Individual_Artist;
 go
 CREATE VIEW View_Individual_Artist
@@ -355,24 +363,33 @@ AS
 	FROM artist
 	WHERE artist_type_id = 1;
 go
-SELECT artist_name FROM View_Individual_Artist;
+SELECT IIF(CHARINDEX(' ', artist_name) > 0, LEFT(artist_name, CHARINDEX(' ', artist_name)), artist_name) as First_Name, 
+	   IIF(CHARINDEX(' ', artist_name) > 0, RIGHT(artist_name, LEN(artist_name) - CHARINDEX(' ', artist_name)), '') as Last_Name
+FROM View_Individual_Artist;
 go
 
 
 
 -- 5. Show the disks in your database and any associated Group artists only
-SELECT cd_name, release_date, artist_name
+
+SELECT 
+	cd_name as 'Disk Name', 
+	CONVERT(varchar, release_date, 110) as 'Release Date', 
+	artist_name as 'Group Name'
 FROM disk
 	JOIN disk_has_artist ON disk.cd_id = disk_has_artist.cd_id
 	JOIN artist ON artist.artist_id = disk_has_artist.artist_id
 WHERE artist_type_id = 2;
 go
--- SELECT * FROM artist
 
 
 
 -- 6. Re-write the previous query using the View_Individual_Artist view. Do not redefine the view. Consider using ‘NOT EXISTS’ or ‘NOT IN’ as the only restriction in the WHERE clause or a join. The output matches the output from the previous query.
-SELECT cd_name, release_date, artist_name
+
+SELECT 
+	cd_name as 'Disk Name', 
+	CONVERT(varchar, release_date, 110) as 'Release Date', 
+	artist_name as 'Group Name'
 FROM disk
 	JOIN disk_has_artist ON disk.cd_id = disk_has_artist.cd_id
 	JOIN artist ON artist.artist_id = disk_has_artist.artist_id
@@ -384,17 +401,44 @@ go
 
 
 -- 7. Show the borrowed disks and who borrowed them.
-SELECT fname, lname, cd_name, borrowed_date, returned_date
+
+SELECT 
+	fname as 'First Name', 
+	lname as 'Last Name', 
+	cd_name as 'Disk Name', 
+	borrowed_date as 'Borrowed Date', 
+	returned_date as 'Returned Date'
 FROM borrower
 	JOIN disk_has_borrower ON disk_has_borrower.borrower_id = borrower.borrower_id
-	JOIN disk ON disk.cd_id = disk_has_borrower.cd_id
+	JOIN disk ON disk.cd_id = disk_has_borrower.cd_id;
 go
 
 
 
 -- 8. Show the number of times a disk has been borrowed
 
+SELECT 
+	disk.cd_id as 'DiskID', 
+	cd_name as 'Disk Name', 
+	COUNT(disk_has_borrower.cd_id) AS 'Times Borrowed'
+FROM disk
+	JOIN disk_has_borrower ON disk_has_borrower.cd_id = disk.cd_id
+GROUP BY disk.cd_id, cd_name
+ORDER BY disk.cd_id;
+go
 
 
 
 -- 9. Show the disks outstanding or on-loan and who has each disk.
+
+SELECT 
+	cd_name as 'Disk Name', 
+	borrowed_date AS 'Borrowed', 
+	returned_date AS 'Returned', 
+	lname as 'Last Name'
+FROM disk_has_borrower
+	JOIN disk ON disk_has_borrower.cd_id = disk.cd_id
+	JOIN borrower ON borrower.borrower_id = disk_has_borrower.borrower_id
+WHERE returned_date IS NULL
+ORDER BY lname;
+go
