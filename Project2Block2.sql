@@ -7,6 +7,7 @@
 * 10/21/2021	Emma				- Created T-SQL queries for your disk_inventory database.
 * 10/22/2021	Emma				- Finished making T-SQL queries for disk_inventory database.
 *										-- Also added code to fix fname & lname issues with artists.
+* 10/25/2021	Emma				- Add ins & upd sp's for disk_has_borrower (PART OF W5D1 LAB).
 ******************************************************************************************************/
 
 --drop & create database
@@ -442,3 +443,63 @@ FROM disk_has_borrower
 WHERE returned_date IS NULL
 ORDER BY lname;
 go
+
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/*	WEEK 5 DAY 1 LAB	10/25/2021	*/
+
+-- 1. Create 2 stored procedures:
+		-- 1a. Insert into diskHasBorrower. Parameters for all columns except the PK. 
+		-- 1b. Update to diskHasBorrower. Accept all columns & updates based on the PK. Set a default value of null for the return date. 
+		-- 1c. Include drop logic, error checking, and execution statements (1 that works & 1 that generates a user error).
+
+-- 1a. Insert into diskHasBorrower:
+DROP PROC IF EXISTS sp_ins_disk_has_borrower
+GO
+CREATE PROC sp_ins_disk_has_borrower
+	@borrower_id int, @cd_id int, @borrowed_date date, @returned_date date = NULL
+AS
+BEGIN TRY
+	INSERT INTO disk_has_borrower
+		(borrower_id, cd_id, borrowed_date, returned_date)
+	VALUES
+		(@borrower_id, @cd_id, @borrowed_date, @returned_date);
+END TRY
+BEGIN CATCH
+	PRINT 'An error occurred. Row was not inserted.';
+    PRINT 'Error number: ' + CONVERT(varchar, ERROR_NUMBER());
+    PRINT 'Error message: ' + CONVERT(varchar(255), ERROR_MESSAGE());
+END CATCH
+GO
+EXEC sp_ins_disk_has_borrower 1, 1, '03-12-2012', '06-25-2012'
+GO
+EXEC sp_ins_disk_has_borrower 10, 2, '11-14-2021'
+GO
+EXEC sp_ins_disk_has_borrower 20, 100, '08-01-2021', '10-07-2021'
+GO
+
+-- 1b. Update to diskHasBorrower:
+DROP PROC IF EXISTS sp_upd_disk_has_borrower
+GO
+CREATE PROC sp_upd_disk_has_borrower
+	@disk_has_borrower_id int, @borrower_id int, @cd_id int, @borrowed_date date, @returned_date date = NULL
+AS
+BEGIN TRY
+UPDATE disk_has_borrower
+SET borrower_id = @borrower_id, cd_id = @cd_id, borrowed_date = @borrowed_date, returned_date = @returned_date
+WHERE disk_has_borrower_id = @disk_has_borrower_id;
+END TRY
+BEGIN CATCH
+	PRINT 'An error occurred. Row was not updated.';
+    PRINT 'Error number: ' + CONVERT(varchar, ERROR_NUMBER());
+    PRINT 'Error message: ' + CONVERT(varchar(255), ERROR_MESSAGE());
+END CATCH
+GO
+EXEC sp_upd_disk_has_borrower 22, 1, 11, '1/2/2021', '2/1/2021';
+EXEC sp_upd_disk_has_borrower 22, 1, 11, '1/2/2021';
+EXEC sp_upd_disk_has_borrower 22, 1, 111, '1/2/2021', '2/1/2021';
